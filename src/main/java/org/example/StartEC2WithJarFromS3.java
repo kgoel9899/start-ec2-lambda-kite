@@ -29,7 +29,7 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
                 "unzip awscliv2.zip\n" +
                 "sudo ./aws/install\n" +
                 "sudo -u ubuntu bash -c 'cd /home/ubuntu && aws s3 cp " + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &'\n";
-
+        
         String base64UserData = Base64.getEncoder().encodeToString(userData.getBytes());
 
         try (Ec2Client ec2 = Ec2Client.create()) {
