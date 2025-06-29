@@ -20,16 +20,12 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
     @Override
     public String handleRequest(Object input, Context context) {
         String userData = "#!/bin/bash\n" +
-                "exec > /home/ubuntu/user-data.log 2>&1\n" +
+                "exec > /home/ec2-user/user-data.log 2>&1\n" +
                 "set -x\n" +
-                "sudo apt-get update\n" +
-                "sudo apt-get install -y unzip curl openjdk-17-jdk mysql-client\n" +
-                "cd /tmp\n" +
-                "curl \"https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip\" -o \"awscliv2.zip\"\n" +
-                "unzip awscliv2.zip\n" +
-                "sudo ./aws/install\n" +
-                "sudo -u ubuntu bash -c 'cd /home/ubuntu && aws s3 cp " + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &'\n";
-        
+                "dnf update -y\n" +
+                "dnf install -y java-17-amazon-corretto-headless\n" +
+                "runuser -l ec2-user -c 'cd /home/ec2-user && aws s3 cp " + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &' \n";
+
         String base64UserData = Base64.getEncoder().encodeToString(userData.getBytes());
 
         try (Ec2Client ec2 = Ec2Client.create()) {
