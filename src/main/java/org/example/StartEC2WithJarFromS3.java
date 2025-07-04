@@ -11,6 +11,7 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
 
     private static final String AMI_ID = System.getenv("AMI_ID");
     private static final String INSTANCE_TYPE = System.getenv("INSTANCE_TYPE");
+    private static final String S3_PATH = System.getenv("S3_PATH");
     private static final String S3_JAR_PATH = System.getenv("S3_JAR_PATH");
     private static final String KEY_NAME = System.getenv("KEY_NAME");
     private static final String SECURITY_GROUP_ID = System.getenv("SECURITY_GROUP_ID");
@@ -24,7 +25,31 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
                 "set -x\n" +
                 "dnf update -y\n" +
                 "dnf install -y java-17-amazon-corretto-headless\n" +
-                "runuser -l ec2-user -c 'cd /home/ec2-user && aws s3 cp " + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &' \n";
+                "runuser -l ec2-user -c 'cd /home/ec2-user && aws s3 cp " + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &' \n" +
+                "\n" +
+                "# Create shutdown script\n" +
+                "cat << 'EOF' > /home/ec2-user/upload-log.sh\n" +
+                "#!/bin/bash\n" +
+                "aws s3 cp /home/ec2-user/app.log " + S3_PATH + "/app-$(date +%Y%m%d-%H%M%S).log\n" +
+                "EOF\n" +
+                "chmod +x /home/ec2-user/upload-log.sh\n" +
+                "\n" +
+                "# Register systemd shutdown service\n" +
+                "cat << 'EOF' > /etc/systemd/system/upload-log.service\n" +
+                "[Unit]\n" +
+                "Description=Upload app.log to S3 on shutdown\n" +
+                "DefaultDependencies=no\n" +
+                "Before=shutdown.target\n" +
+                "\n" +
+                "[Service]\n" +
+                "Type=oneshot\n" +
+                "ExecStart=/home/ec2-user/upload-log.sh\n" +
+                "RemainAfterExit=true\n" +
+                "\n" +
+                "[Install]\n" +
+                "WantedBy=shutdown.target\n" +
+                "EOF\n" +
+                "systemctl enable upload-log.service\n";
 
         String base64UserData = Base64.getEncoder().encodeToString(userData.getBytes());
 
