@@ -30,7 +30,10 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
                 "# Create shutdown script\n" +
                 "cat << 'EOF' > /home/ec2-user/upload-log.sh\n" +
                 "#!/bin/bash\n" +
-                "aws s3 cp /home/ec2-user/app.log " + S3_PATH + "/app-$(date +%Y%m%d-%H%M%S).log\n" +
+                "DATE=$(date +%Y%m%d-%H%M%S)\n" +
+                "BUCKET_PATH=" + S3_PATH + "/$DATE\n" +
+                "aws s3 cp /home/ec2-user/app.log $BUCKET_PATH/app.log\n" +
+                "aws s3 cp /home/ec2-user/data.csv $BUCKET_PATH/data.csv\n" +
                 "EOF\n" +
                 "chmod +x /home/ec2-user/upload-log.sh\n" +
                 "\n" +
