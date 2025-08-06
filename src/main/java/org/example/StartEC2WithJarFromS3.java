@@ -25,15 +25,15 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
                 "set -x\n" +
                 "dnf update -y\n" +
                 "dnf install -y java-17-amazon-corretto-headless\n" +
-                "runuser -l ec2-user -c 'cd /home/ec2-user && aws s3 cp " + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &' \n" +
+                "runuser -l ec2-user -c 'cd /home/ec2-user && aws s3 cp --region ap-south-1" + S3_JAR_PATH + " app.jar && nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 &' \n" +
                 "\n" +
                 "# Create shutdown script\n" +
                 "cat << 'EOF' > /home/ec2-user/upload-log.sh\n" +
                 "#!/bin/bash\n" +
                 "DATE=$(date +%Y%m%d-%H%M%S)\n" +
                 "BUCKET_PATH=" + S3_PATH + "/$DATE\n" +
-                "aws s3 cp /home/ec2-user/app.log $BUCKET_PATH/app.log\n" +
-                "aws s3 cp /home/ec2-user/data.csv $BUCKET_PATH/data.csv\n" +
+                "aws s3 cp --region ap-south-1 /home/ec2-user/app.log $BUCKET_PATH/app.log\n" +
+                "aws s3 cp --region ap-south-1 /home/ec2-user/data.csv $BUCKET_PATH/data.csv\n" +
                 "EOF\n" +
                 "chmod +x /home/ec2-user/upload-log.sh\n" +
                 "\n" +
