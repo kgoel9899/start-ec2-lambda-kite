@@ -2,6 +2,7 @@ package org.example;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
 
@@ -56,7 +57,7 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
 
         String base64UserData = Base64.getEncoder().encodeToString(userData.getBytes());
 
-        try (Ec2Client ec2 = Ec2Client.create()) {
+        try (Ec2Client ec2 = Ec2Client.builder().region(Region.AP_SOUTH_1).build()) {
             RunInstancesResponse response = ec2.runInstances(RunInstancesRequest.builder()
                     .imageId(AMI_ID)
                     .instanceType(INSTANCE_TYPE)
