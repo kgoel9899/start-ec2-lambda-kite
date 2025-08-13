@@ -34,7 +34,7 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
                 "DATE=$(date +%Y%m%d-%H%M%S)\n" +
                 "BUCKET_PATH=" + S3_PATH + "/$DATE\n" +
                 "aws s3 cp --region ap-south-1 /home/ec2-user/app.log $BUCKET_PATH/app.log\n" +
-                "aws s3 cp --region ap-south-1 /home/ec2-user/data.csv $BUCKET_PATH/data.csv\n" +
+//                "aws s3 cp --region ap-south-1 /home/ec2-user/data.csv $BUCKET_PATH/data.csv\n" +
                 "EOF\n" +
                 "chmod +x /home/ec2-user/upload-log.sh\n" +
                 "\n" +
