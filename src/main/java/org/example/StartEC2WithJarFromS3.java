@@ -2,6 +2,8 @@ package org.example;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
@@ -16,8 +18,12 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
     private static final String S3_JAR_PATH = System.getenv("S3_JAR_PATH");
     private static final String KEY_NAME = System.getenv("KEY_NAME");
     private static final String SECURITY_GROUP_ID = System.getenv("SECURITY_GROUP_ID");
-    private static final String SUBNET_ID = System.getenv("SUBNET_ID");
+    private static final String[] SUBNET_IDS =
+            new String[]{System.getenv("SUBNET_ID_A"),
+                         System.getenv("SUBNET_ID_B"),
+                         System.getenv("SUBNET_ID_C")};
     private static final String IAM_INSTANCE_PROFILE_ARN = System.getenv("IAM_INSTANCE_PROFILE_ARN");
+    private static final Logger logger = LoggerFactory.getLogger(StartEC2WithJarFromS3.class);
 
     @Override
     public String handleRequest(Object input, Context context) {
@@ -58,26 +64,50 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
         String base64UserData = Base64.getEncoder().encodeToString(userData.getBytes());
 
         try (Ec2Client ec2 = Ec2Client.builder().region(Region.AP_SOUTH_1).build()) {
-            RunInstancesResponse response = ec2.runInstances(RunInstancesRequest.builder()
-                    .imageId(AMI_ID)
-                    .instanceType(INSTANCE_TYPE)
-                    .keyName(KEY_NAME)
-                    .securityGroupIds(SECURITY_GROUP_ID)
-                    .subnetId(SUBNET_ID)
-                    .iamInstanceProfile(IamInstanceProfileSpecification.builder()
-                            .arn(IAM_INSTANCE_PROFILE_ARN).build())
-                    .userData(base64UserData)
-                    .minCount(1)
-                    .maxCount(1)
-                    .tagSpecifications(TagSpecification.builder()
-                            .resourceType(ResourceType.INSTANCE)
-                            .tags(Tag.builder().key("CreatedFor").value("Kite").build(),
-                                    Tag.builder().key("Name").value("ec2-kite").build())
-                            .build())
-                    .build());
+            for(String subnetId : SUBNET_IDS) {
+                try {
+                    RunInstancesResponse response = ec2.runInstances(RunInstancesRequest.builder()
+                            .imageId(AMI_ID)
+                            .instanceType(INSTANCE_TYPE)
+                            .keyName(KEY_NAME)
+                            .securityGroupIds(SECURITY_GROUP_ID)
+                            .subnetId(subnetId)
+                            .iamInstanceProfile(IamInstanceProfileSpecification.builder()
+                                    .arn(IAM_INSTANCE_PROFILE_ARN).build())
+                            .userData(base64UserData)
+                            .minCount(1)
+                            .maxCount(1)
+                            .tagSpecifications(TagSpecification.builder()
+                                    .resourceType(ResourceType.INSTANCE)
+                                    .tags(Tag.builder().key("CreatedFor").value("Kite").build(),
+                                            Tag.builder().key("Name").value("ec2-kite").build())
+                                    .build())
+                            .build());
 
-            String instanceId = response.instances().get(0).instanceId();
-            return "Started EC2 instance with ID: " + instanceId;
+                    String instanceId = response.instances().get(0).instanceId();
+                    DescribeInstancesResponse describeResponse = ec2.describeInstances(
+                            DescribeInstancesRequest.builder()
+                                    .instanceIds(instanceId)
+                                    .build()
+                    );
+                    Instance instance = describeResponse.reservations()
+                            .get(0)
+                            .instances()
+                            .get(0);
+                    String az = instance.placement().availabilityZone();
+                    return "Started EC2 instance with ID: " + instanceId +
+                            " in subnet: " + subnetId +
+                            " (AZ: " + az + ")";
+                } catch (Ec2Exception e) {
+                    logger.error(
+                            "EC2 launch failed in subnet {} due to an error: {}",
+                            subnetId,
+                            e.awsErrorDetails() != null
+                            ? e.awsErrorDetails().errorMessage()
+                            : e.getMessage());
+                }
+            }
         }
+        throw new RuntimeException("EC2 launch failed entirely");
     }
 }
