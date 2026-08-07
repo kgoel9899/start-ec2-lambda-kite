@@ -41,13 +41,19 @@ public class StartEC2WithJarFromS3 implements RequestHandler<Object, String> {
                 "BUCKET_PATH=" + S3_PATH + "/$DATE\n" +
                 "aws s3 cp --region ap-south-1 /home/ec2-user/app.log $BUCKET_PATH/app.log\n" +
 //                "aws s3 cp --region ap-south-1 /home/ec2-user/data.csv $BUCKET_PATH/data.csv\n" +
+                "# Momentum strategy logs: momentum-trades.csv and momentum-events.log, plus\n" +
+                "# whatever logback has already rolled over. Recursive so new files under logs/\n" +
+                "# get picked up without touching this script.\n" +
+                "if [ -d /home/ec2-user/logs ]; then\n" +
+                "  aws s3 cp --recursive --region ap-south-1 /home/ec2-user/logs $BUCKET_PATH/logs\n" +
+                "fi\n" +
                 "EOF\n" +
                 "chmod +x /home/ec2-user/upload-log.sh\n" +
                 "\n" +
                 "# Register systemd shutdown service\n" +
                 "cat << 'EOF' > /etc/systemd/system/upload-log.service\n" +
                 "[Unit]\n" +
-                "Description=Upload app.log to S3 on shutdown\n" +
+                "Description=Upload app.log and momentum logs to S3 on shutdown\n" +
                 "DefaultDependencies=no\n" +
                 "Before=shutdown.target\n" +
                 "\n" +
